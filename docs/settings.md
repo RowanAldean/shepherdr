@@ -17,6 +17,9 @@
   off and says so. A saved choice stays as it is, and warns where that CLI is missing or signed out: on its row, and
   How tasks work repeats a backup's. A machine not checked yet (it just connected, or the check can't run there)
   keeps the other CLI, unverified, until one succeeds, and its row says so if the check failed.
+- Agents → Web search (`search.mcp`, `off` by default, or `Parallel`) connects new regular coordinator and task agent
+  launches to Parallel's keyless Search MCP (`https://search.parallel.ai/mcp`) without changing the CLI's config files.
+  When on, search queries and fetched URLs go to Parallel. Isolated Autopilot and read-only reviewers keep it off.
 - Secrets (How Shepherdr runs) holds the keys, tokens and passwords agents use, by name: add, replace and remove them
   in masked boxes, Everywhere (or tick For this space only), for a machine or for a space; the most specific one wins. An agent that needs one asks
   with `shepherdr secret ask NAME --why "…"`: its chat shows a masked box, and the agent is told by name once it is

@@ -182,6 +182,7 @@ export const CATALOG: Section[] = [
       { group: 'Backup', label: 'Agent', key: 'task.fallback', value: 'Codex', options: ['off', ...CHAT_CLIS] },
       { group: 'Backup', label: 'Model', key: 'backup.model', value: 'default', text: true },
       { group: 'Backup', label: 'Effort', key: 'backup.effort', value: 'default', options: [...EFFORTS] },
+      { group: 'Web search', label: 'Search MCP', key: 'search.mcp', value: 'off', options: ['off', 'Parallel'] },
     ],
   },
   {

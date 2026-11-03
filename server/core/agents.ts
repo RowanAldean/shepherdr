@@ -19,6 +19,8 @@ import type { ResumeStart } from './failed-starts.ts'
 import { ownRules } from './own-commands.ts'
 
 const EVENTS = ['SessionStart', 'UserPromptSubmit', 'Stop', 'SessionEnd', 'PermissionRequest', 'PreToolUse', 'PostToolUse', 'PostToolUseFailure', 'Notification', 'SubagentStart', 'SubagentStop']
+const PARALLEL_MCP = 'https://search.parallel.ai/mcp'
+const PARALLEL_TOOLS = ['mcp__parallel-search__web_search', 'mcp__parallel-search__web_fetch']
 const quote = (value: string) => `'${value.replace(/'/g, `'"'"'`)}'`
 const toml = (value: string) => JSON.stringify(value)
 
@@ -113,7 +115,8 @@ export class CoreAgents {
     const command = options.pilot ? '/run/shepherdr/bun /run/shepherdr/core-pilot-hook.ts' : `${quote(remote?.bun ?? process.execPath)} ${quote(join(root, 'helper/core-hook.ts'))}`
     const settings = join(directory, `${grant.id}.settings.json`)
     const hooks = Object.fromEntries(EVENTS.map(event => [event, [{ hooks: [{ type: 'command', command, timeout: event === 'PermissionRequest' ? 3600 : 5 }] }]]))
-    await privateFile(settings, JSON.stringify(role === 'reviewer' || options.readOnly ? { hooks } : { hooks, permissions: { allow: ownRules(join(root, 'bin/shepherdr')) } }))
+    const search = !options.pilot && !options.readOnly && role !== 'reviewer' && this.settings?.get('search.mcp', space.id) === 'Parallel'
+    await privateFile(settings, JSON.stringify(role === 'reviewer' || options.readOnly ? { hooks } : { hooks, permissions: { allow: [...ownRules(join(root, 'bin/shepherdr')), ...(search ? PARALLEL_TOOLS : [])] } }))
     const instructions = join(directory, `${grant.id}.instructions.md`)
     const privateWords = this.settings?.instructions(role === 'task' ? 'task' : role === 'reviewer' ? 'reviewer' : 'coordinator', space.id) || ''
     const skill = (name: string) => readFileSync(join(import.meta.dir, `../../skill/${name}/SKILL.md`), 'utf8')
@@ -150,6 +153,7 @@ export class CoreAgents {
       if (options.model) argv.push('--model', options.model)
       if (options.effort) argv.push('--effort', options.effort)
       if (options.speed) argv.push('--fast-mode', options.speed === 'fast' ? 'on' : 'off')
+      if (search) argv.push('--mcp-config', JSON.stringify({ mcpServers: { 'parallel-search': { type: 'http', url: PARALLEL_MCP } } }))
     } else {
       if (headless) argv.push('exec', '--json', '--sandbox', 'read-only')
       else {
@@ -165,6 +169,7 @@ export class CoreAgents {
       if (options.model) argv.push('--model', options.model)
       if (options.effort) argv.push('-c', `model_reasoning_effort=${toml(options.effort)}`)
       if (options.speed) argv.push('-c', `service_tier=${toml(options.speed === 'fast' ? 'fast' : 'default')}`)
+      if (search) argv.push('-c', `mcp_servers.parallel_search.url=${toml(PARALLEL_MCP)}`)
       if (record.session) argv.push('resume', record.session)
     }
     // A native CLI can defer SessionStart until its first turn. An explicit, harmless restart turn

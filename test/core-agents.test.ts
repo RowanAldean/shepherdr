@@ -3,6 +3,8 @@ import { mkdtempSync, rmSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { CoreAgents } from '../server/core/agents.ts'
+import type { CoreFiles } from '../server/core/files.ts'
+import { CoreSettings } from '../server/core/settings.ts'
 import { CoreStore } from '../server/core/store.ts'
 import type { CoreAgent } from '../server/core/model.ts'
 import type { CoreSession } from '../server/core/session.ts'
@@ -106,6 +108,29 @@ test('a picked speed reaches each CLI in its own words, for that launch only', a
     expect(await start('e', 'codex', 'normal')).toContain('service_tier="default"')
     expect(await start('f', 'codex')).not.toContain('service_tier')
     expect(store.get('agent', 'd')).toMatchObject({ speed: 'fast' })
+  } finally { store.close(); rmSync(home, { recursive: true, force: true }) }
+})
+
+test('search.mcp passes Parallel Search only to regular launches when enabled', async () => {
+  const home = mkdtempSync(join(tmpdir(), 'shep-search-start-')), store = new CoreStore(home)
+  try {
+    let argv: string[] = [], count = 0
+    const space = { id: 'p:machine:one', name: 'one', machine: 'machine', folder: '/unused', base: 'main', prefix: 'EX', mode: 'regular' as const, added: 1 }
+    const core = { current: { terminals: new Map() }, call: async (_method: string, input: { argv: string[] }) => { argv = input.argv; return { address: `t${++count}`, pid: count } } } as unknown as CoreSession
+    const mailbox = { issue: () => ({ id: `search-grant-${count}`, credential: {} }) } as unknown as Mailbox
+    const agents = new CoreAgents({ home, port: 0, session: 'test', socket: '/unused', binary: 'hc' }, { format: 'shepherdr-core', schema: 1, id: 'installation' }, core, store, mailbox, async () => undefined, () => {})
+    agents.settings = new CoreSettings(store, {} as CoreFiles, () => [space], id => id, () => {})
+    await agents.launch(space, 'a', 'claude', 'Wait')
+    expect(argv).not.toContain('--mcp-config')
+    agents.settings.set('search.mcp', 'Parallel', space.id)
+    await agents.launch(space, 'b', 'claude', 'Wait')
+    expect(argv[argv.indexOf('--mcp-config') + 1]).toBe('{"mcpServers":{"parallel-search":{"type":"http","url":"https://search.parallel.ai/mcp"}}}')
+    const launchSettings = JSON.parse(readFileSync(argv[argv.indexOf('--settings') + 1], 'utf8'))
+    expect(launchSettings.permissions.allow).toEqual(expect.arrayContaining(['mcp__parallel-search__web_search', 'mcp__parallel-search__web_fetch']))
+    await agents.launch(space, 'c', 'codex', 'Wait')
+    expect(argv).toContain('mcp_servers.parallel_search.url="https://search.parallel.ai/mcp"')
+    await agents.launch(space, 'd', 'claude', 'Review only', { role: 'reviewer', readOnly: true })
+    expect(argv).not.toContain('--mcp-config')
   } finally { store.close(); rmSync(home, { recursive: true, force: true }) }
 })
 

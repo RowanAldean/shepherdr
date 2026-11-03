@@ -55,6 +55,7 @@ const CATALOG: SettingSection[] = [
     { group: 'Backup', key: 'task.fallback', label: 'Agent', value: 'Codex', options: ['off', ...Object.values(names)] },
     { group: 'Backup', key: 'backup.model', label: 'Model', value: 'default', text: true },
     { group: 'Backup', key: 'backup.effort', label: 'Effort', value: 'default', options: ['default', ...TABLE.codex.efforts] },
+    { group: 'Web search', key: 'search.mcp', label: 'Search MCP', value: 'off', options: ['off', 'Parallel'] },
     ] },
 ]
 const SECTION_ORDER = ['Private instructions', 'How tasks work', 'Agents', 'Tasks', 'Autopilot', 'Browser', 'Notify', 'Machine', 'Time zone', 'Alerts and voice']
@@ -121,6 +122,7 @@ export class CoreSettings {
       if (key === 'heartbeat.on') { eventRules(value) }
       if (key === 'autopilot.hosts') value = pilotHosts(value.split(/[\s,]+/).filter(Boolean)).join(', ')
       if (key === 'autopilot.secrets' && value.split(/[\s,]+/).filter(Boolean).some(name => !/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(name))) throw Error('Use secret names separated by commas')
+      if (key === 'search.mcp') value = value.toLowerCase() === 'parallel' ? 'Parallel' : value.toLowerCase() === 'off' ? 'off' : value
       if (key.endsWith('.model') && !(key === 'autopilot.model' && value === 'inherit') && value !== 'default' && value) {
         const role = key.split('.')[0] as Role | 'autopilot', kind = this.agent(role, level).kind
         if (this.catalog(kind, level).models.length && !this.findModel(kind, value, level)) throw new Error('Choose a model offered by this agent')

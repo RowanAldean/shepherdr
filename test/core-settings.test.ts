@@ -144,8 +144,12 @@ test('fresh devices can enroll alerts Everywhere, while device names and deliver
 test('global scheduling remains visible from every scope and familiar Browser and private-rule pages remain', () => fixture(settings => {
   const sections = settings.sections()
   const agents = sections.find(section => section.name === 'Agents' && section.level === 'p:box:one')!
-  expect([...new Set(agents.rows.map(row => row.group))]).toEqual(['Tasks', 'Coordinators', 'Backup'])
+  expect([...new Set(agents.rows.map(row => row.group))]).toEqual(['Tasks', 'Coordinators', 'Backup', 'Web search'])
   expect(agents.about).toContain('Backup takes a task over')
+  expect(settings.get('search.mcp', 'p:box:one')).toBe('off')
+  settings.set('search.mcp', 'parallel', 'm:box')
+  expect(settings.get('search.mcp', 'p:box:one')).toBe('Parallel')
+  expect(() => settings.set('search.mcp', 'other')).toThrow('offered values')
   expect(sections.filter(section => section.name === 'Time zone')).toHaveLength(1)
   expect(sections.find(section => section.name === 'Time zone')).toMatchObject({ global: true, level: 'all' })
   expect(sections.find(section => section.name === 'Browser' && section.level === 'p:box:one')).toBeDefined()
